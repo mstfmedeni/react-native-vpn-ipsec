@@ -1,11 +1,14 @@
 package com.sijav.reactnativeipsecvpn;
 
+import static android.app.Activity.RESULT_OK;
+
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Service;
 import android.content.Intent;
 import android.net.VpnService;
-import android.os.Bundle;
+import android.os.SystemClock;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 
@@ -16,9 +19,14 @@ import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 
+import org.strongswan.android.data.VpnProfile;
 import org.strongswan.android.logic.VpnStateService;
+import org.strongswan.android.manager.VpnActivityWrapper;
+import org.strongswan.android.manager.VpnInfoData;
+import org.strongswan.android.manager.VpnManagerImplNew;
 
-import static android.app.Activity.RESULT_OK;
+import androidx.appcompat.app.AppCompatActivity;
+
 
 public class RNIpSecVpn extends ReactContextBaseJavaModule {
 
@@ -26,15 +34,18 @@ public class RNIpSecVpn extends ReactContextBaseJavaModule {
     private static ReactApplicationContext reactContext;
 
     private RNIpSecVpnStateHandler _RNIpSecVpnStateHandler;
+    private static VpnManagerImplNew vpnManager;
 
     RNIpSecVpn(ReactApplicationContext context) {
         super(context);
         // Load charon bridge
         System.loadLibrary("androidbridge");
         reactContext = context;
+        vpnManager = VpnManagerImplNew.getInstance();
         Intent vpnStateServiceIntent = new Intent(context, VpnStateService.class);
         _RNIpSecVpnStateHandler = new RNIpSecVpnStateHandler(this);
         context.bindService(vpnStateServiceIntent, _RNIpSecVpnStateHandler, Service.BIND_AUTO_CREATE);
+
     }
 
 
@@ -50,6 +61,7 @@ public class RNIpSecVpn extends ReactContextBaseJavaModule {
     @ReactMethod
     public void prepare(final Promise promise) {
         Activity currentActivity = getCurrentActivity();
+        vpnManager = VpnManagerImplNew.getInstance();
 
         if (currentActivity == null) {
             promise.reject("E_ACTIVITY_DOES_NOT_EXIST", "Activity doesn't exist");
@@ -68,36 +80,111 @@ public class RNIpSecVpn extends ReactContextBaseJavaModule {
             });
             currentActivity.startActivityForResult(intent, 0);
         }
+
+
+        VpnManagerImplNew.setActivityWrapper(new VpnActivityWrapper((AppCompatActivity)currentActivity, new VpnActivityWrapper.StateListener() {
+            @Override
+            public void disabled() {
+
+                Log.e("stswan:reportError:", "DISABLED");
+
+            }
+
+            @Override
+            public void stateChanged() {
+                Log.e("stswan:reportError:", "stateChanged");
+                _RNIpSecVpnStateHandler.stateChanged();
+            }
+
+
+            @Override
+            public void connecting() {
+
+                Log.e("stswan:reportError:", "CONNECTING");
+            }
+
+            @Override
+            public void connected() {
+
+                Log.e("stswan:reportError:", "CONNECTED");
+
+            }
+
+            @Override
+            public void disconnecting() {
+
+                Log.e("stswan:reportError:", "DISCONNECTING");
+            }
+        }));
+
+    /*    VpnManagerImplNew.setActivityWrapper(new VpnActivityWrapper((AppCompatActivity)currentActivity, new VpnActivityWrapper.StateListener() {
+            @Override
+            public void disabled() {
+
+                Log.e("stswan:reportError:", "DISABLED");
+
+            }
+
+            @Override
+            public void stateChanged() {
+                Log.e("stswan:reportError:", "stateChanged");
+                _RNIpSecVpnStateHandler.stateChanged();
+            }
+
+
+            @Override
+            public void connecting() {
+
+                Log.e("stswan:reportError:", "CONNECTING");
+            }
+
+            @Override
+            public void connected() {
+
+                Log.e("stswan:reportError:", "CONNECTED");
+
+            }
+
+            @Override
+            public void disconnecting() {
+
+                Log.e("stswan:reportError:", "DISCONNECTING");
+            }
+        }));*/
     }
 
     @ReactMethod
-    public void connect(String address, String username, String password, String vpnType, Integer mtu, Promise promise) {
+    public void connect(String address, String username, String password,  Promise promise) {
         if(_RNIpSecVpnStateHandler.vpnStateService == null){
             promise.reject("E_SERVICE_NOT_STARTED", "Service not started yet");
             return;
         }
-        if(mtu == 0){
-            mtu = 1400;
-        }
+
         Activity currentActivity = getCurrentActivity();
 
         if (currentActivity == null) {
             promise.reject("E_ACTIVITY_DOES_NOT_EXIST", "Activity doesn't exist");
             return;
         }
+
         Intent intent = VpnService.prepare(currentActivity);
         if (intent != null) {
             promise.reject("PrepareError", "Not prepared");
             return;
         }
 
-        Bundle profileInfo = new Bundle();
+    /*    Bundle profileInfo = new Bundle();
         profileInfo.putString("Address", address);
         profileInfo.putString("UserName", username);
         profileInfo.putString("Password", password);
-        profileInfo.putString("VpnType", password);
+        profileInfo.putString("VpnType", VpnType.IKEV2_EAP.getIdentifier());
         profileInfo.putInt("MTU", mtu);
-        _RNIpSecVpnStateHandler.vpnStateService.connect(profileInfo, true);
+        _RNIpSecVpnStateHandler.vpnStateService.connect(profileInfo, true);*/
+        VpnInfoData profile = new VpnInfoData("name", "us2.netkeeply.com", "vpnuser", "A4K3i95PC4AysZDx");
+        VpnProfile vpnProfile = VpnManagerImplNew.getInstance().createVpnProfile(profile);
+
+        vpnManager.getActivityWrapper().connectVpn(vpnProfile);
+
         promise.resolve(null);
     }
 

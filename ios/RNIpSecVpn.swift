@@ -90,12 +90,21 @@ class RNIpSecVpn: RCTEventEmitter {
     @objc
     func prepare(_ findEventsWithResolver: RCTPromiseResolveBlock, rejecter: RCTPromiseRejectBlock) -> Void {
         
+        self.vpnManager.loadFromPreferences { (error) in
+            if error != nil {
+                print(error.debugDescription)
+            }
+            else{
+                print("No error from loading VPN viewDidLoad")
+            }
+        }
+
         // Register to be notified of changes in the status. These notifications only work when app is in foreground.
         NotificationCenter.default.addObserver(forName: NSNotification.Name.NEVPNStatusDidChange, object : nil , queue: nil) {
             notification in let nevpnconn = notification.object as! NEVPNConnection
             self.sendEvent(withName: "stateChanged", body: [ "state" : checkNEStatus(status: nevpnconn.status) ])
-            
         }
+        
         findEventsWithResolver(nil)
     }
     
@@ -108,9 +117,9 @@ class RNIpSecVpn: RCTEventEmitter {
     }
     
     @objc
-    func saveConfig(_ name: NSString, address: NSString, username: NSString, password: NSString,  secret: NSString, disconnectOnSleep: Bool=false, findEventsWithResolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock )->Void{
+    func saveConfig(_ name: NSString, address: NSString, username: NSString, password: NSString,  secret: NSString, findEventsWithResolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock )->Void{
         
-        loadReference(name, address: address, username: username, password: password,   secret: secret, disconnectOnSleep: disconnectOnSleep, findEventsWithResolver: findEventsWithResolver, rejecter: rejecter, isPrepare: true)
+        loadReference(name, address: address, username: username, password: password,   secret: secret, disconnectOnSleep: false, findEventsWithResolver: findEventsWithResolver, rejecter: rejecter, isPrepare: true)
     }
     
     @objc
@@ -212,6 +221,12 @@ class RNIpSecVpn: RCTEventEmitter {
             fatalError()
         }
     }
+    
+    @objc
+    func getConnectionTimeSecond(_ findEventsWithResolver:RCTPromiseResolveBlock, rejecter: RCTPromiseRejectBlock) -> Void {
+        findEventsWithResolver( Int(Date().timeIntervalSince(vpnManager.connection.connectedDate ?? Date())) )
+    }
+    
     
     @objc
     func getCharonErrorState(_ findEventsWithResolver: RCTPromiseResolveBlock, rejecter: RCTPromiseRejectBlock) -> Void {

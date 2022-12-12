@@ -1,4 +1,4 @@
-import { NativeEventEmitter, NativeModules, EmitterSubscription } from 'react-native';
+import { NativeEventEmitter, NativeModules, EmitterSubscription, Platform } from 'react-native';
 
 // the generic VPN state for all platforms.
 export enum VpnState {
@@ -57,10 +57,7 @@ export const onStateChangedListener: (
 export const prepare: () => Promise<void> = NativeModules.RNIpSecVpn.prepare;
 
 // connect to VPN.
-//
-// use given credentials to connect VPN (ikev2-eap).
-// this will create a background VPN service.
-// mtu is only available on android.
+
 export const connect: (
   name: string,
   address: string,
@@ -68,21 +65,32 @@ export const connect: (
   password: string,
   secret: string,
   disapleOnSleep: boolean
-) => Promise<void> = (name, address, username, password, secret, disapleOnSleep) =>
-  NativeModules.RNIpSecVpn.connect(name, address || '', username || '', password || '', secret || '', disapleOnSleep);
+) => Promise<void> = (name, address, username, password, secret, disapleOnSleep) => {
+  if (Platform.OS == 'ios') {
+    return NativeModules.RNIpSecVpn.connect(name, address || '', username || '', password || '', secret || '', disapleOnSleep);
+  } else {
+    return NativeModules.RNIpSecVpn.connect(address || '', username || '', password || '');
+  }
+};
 
-export const saveConfig: (
-  name: string,
-  address: string,
-  username: string,
-  password: string,
-  secret: string,
-  disapleOnSleep: boolean
-) => Promise<void> = (name, address, username, password, secret, disapleOnSleep) =>
-  NativeModules.RNIpSecVpn.saveConfig(name, address || '', username || '', password || '', secret || '', disapleOnSleep);
+export const saveConfig: (name: string, address: string, username: string, password: string, secret: string) => Promise<void> = (
+  name,
+  address,
+  username,
+  password,
+  secret
+) => {
+  if (Platform.OS == 'ios') {
+    return NativeModules.RNIpSecVpn.saveConfig(name, address || '', username || '', password || '', secret || '');
+  } else {
+    return NativeModules.RNIpSecVpn.connect(address || '', username || '', password || '');
+  }
+};
 
 // get current state
 export const getCurrentState: () => Promise<VpnState> = NativeModules.RNIpSecVpn.getCurrentState;
+
+export const getConnectionTimeSecond: () => Promise<Number> = NativeModules.RNIpSecVpn.getConnectionTimeSecond;
 
 // get current error state from `VpnStateService`. (Android only will recieve no error on ios)
 // when [VpnState.genericError] is receivedon android, details of error can be

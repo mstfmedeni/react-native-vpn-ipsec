@@ -29,13 +29,15 @@ npx react-native run-android
 ## Usage
 
 ```javascript
-import { prepare, connect } from "react-native-vpn-ipsec";
+import { saveConfig, prepare, connect } from "react-native-vpn-ipsec";
 ...
 useEffect(() => {
 	prepare();
 }); /// or use componentDidmount in case of a class component
 ...
-connect(address, username, password, vpnType, secret, disconnectOnSleep)
+connect(name, address, username, password,  secret, disconnectOnSleep)
+
+saveConfig(name, address, username, password,  secret)
 ```
 
 ### see example folder.

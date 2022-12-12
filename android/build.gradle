@@ -13,43 +13,18 @@ buildscript {
         google()
         mavenCentral()
     }
-    dependencies {
-        // For downloading prebuilt libs
-        classpath("de.undercouch:gradle-download-task:5.0.1")
-    }
+
     if (project == rootProject) {
         repositories {
             google()
             mavenCentral()
         }
         dependencies {
-            classpath("com.android.tools.build:gradle:7.2.1")
+            classpath 'com.android.tools.build:gradle:4.2.2'
         }
     }
 }
 apply plugin: 'maven-publish'
-apply plugin: 'de.undercouch.download'
-
-
-// Download prebuilt native libs.
-task downloadNaticeLib(type: Download) {
-    src 'https://github.com/mstfmedeni/react-native-vpn-ipsec/download/strongswan_libs_v5.8.1.zip'
-    dest "$buildDir/native.zip"
-}
-
-task getNativeFile(dependsOn: downloadNaticeLib, type: Copy) {
-    from zipTree("$buildDir/native.zip")
-    into "src/main/libs"
-}
-
-// Automatically download native libs before build when doesn't exist.
-tasks.whenTaskAdded {
-    task ->
-        if (task.name == "preBuild" && !(file('./src/main/libs').exists())) {
-            preBuild.dependsOn getNativeFile
-        }
-}
-
 apply plugin: 'com.android.library'
 
 android {
@@ -96,36 +71,13 @@ dependencies {
     implementation "com.facebook.react:react-native:${safeExtGet("reactNative", "+")}" // from node_modules
     implementation 'androidx.core:core-ktx:1.8.0'
     def appcompat_version = "1.5.1"
-
     implementation "androidx.appcompat:appcompat:$appcompat_version"
     // For loading and tinting drawables on older versions of the platform
-    implementation "androidx.appcompat:appcompat-resources:$appcompat_version"}
+    implementation "androidx.appcompat:appcompat-resources:$appcompat_version"
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.4.0'
+     implementation 'androidx.preference:preference:1.1.1'
+    implementation 'androidx.legacy:legacy-support-v4:1.0.0'
+    implementation 'com.google.android.material:material:1.4.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
 
-def configureReactNativePom(def pom) {
-    def packageJson = new groovy.json.JsonSlurper().parseText(file('../package.json').text)
-
-    pom.project {
-        name packageJson.title
-        artifactId packageJson.name
-        version = packageJson.version
-        group = "com.sijav.reactnativeipsecvpn"
-        description packageJson.description
-        url packageJson.repository.baseUrl
-
-        licenses {
-            license {
-                name packageJson.license
-                url packageJson.repository.baseUrl + '/blob/master/' + packageJson.licenseFilename
-                distribution 'repo'
-            }
-        }
-
-        developers {
-            developer {
-                id packageJson.author.username
-                name packageJson.author.name
-            }
-        }
-    }
 }
-

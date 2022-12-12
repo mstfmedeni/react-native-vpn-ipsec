@@ -6,6 +6,7 @@ import {
   disconnect,
   getCharonErrorState,
   getCurrentState,
+  getConnectionTimeSecond,
   onStateChangedListener,
   prepare,
 } from 'react-native-vpn-ipsec';

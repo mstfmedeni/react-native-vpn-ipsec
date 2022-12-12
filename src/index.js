@@ -29,11 +29,24 @@ export const onStateChangedListener = (callback) => {
   return stateChanged.addListener(STATE_CHANGED_EVENT_NAME, (e) => callback(e));
 };
 export const prepare = NativeModules.RNIpSecVpn.prepare;
-export const connect = (name, address, username, password, secret, disapleOnSleep) =>
-  NativeModules.RNIpSecVpn.connect(name, address || '', username || '', password || '', secret || '', disapleOnSleep);
-export const saveConfig = (name, address, username, password, secret, disapleOnSleep) =>
-  NativeModules.RNIpSecVpn.saveConfig(name, address || '', username || '', password || '', secret || '', disapleOnSleep);
+export const connect = (name, address, username, password, secret, disapleOnSleep) => {
+  if (Platform.OS == 'ios') {
+    return NativeModules.RNIpSecVpn.connect(name, address || '', username || '', password || '', secret || '', disapleOnSleep);
+  } else {
+    return NativeModules.RNIpSecVpn.connect(address || '', username || '', password || '');
+  }
+};
+
+export const saveConfig = (name, address, username, password, secret) => {
+  if (Platform.OS == 'ios') {
+    return NativeModules.RNIpSecVpn.saveConfig(name, address || '', username || '', password || '', secret || '');
+  } else {
+    return NativeModules.RNIpSecVpn.connect(address || '', username || '', password || '');
+  }
+};
+
 export const getCurrentState = NativeModules.RNIpSecVpn.getCurrentState;
+export const getConnectionTimeSecond = NativeModules.RNIpSecVpn.getConnectionTimeSecond;
 export const getCharonErrorState = NativeModules.RNIpSecVpn.getCharonErrorState;
 export const disconnect = NativeModules.RNIpSecVpn.disconnect;
 export default NativeModules.RNIpSecVpn;

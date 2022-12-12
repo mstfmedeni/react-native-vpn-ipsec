@@ -16,17 +16,26 @@
 package org.strongswan.android.logic;
 
 import java.security.Security;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.strongswan.android.security.LocalCertificateKeyStoreProvider;
+import org.strongswan.android.manager.VpnActivityWrapper;
 
 import android.app.Application;
 import android.content.Context;
 import android.os.Build;
-import com.sijav.reactnativeipsecvpn.RNIpSecVpn;
+import android.os.Handler;
+import android.os.Looper;
+
+import androidx.core.os.HandlerCompat;
 
 public class StrongSwanApplication extends Application
 {
 	private static Context mContext;
+	private final ExecutorService mExecutorService = Executors.newFixedThreadPool(4);
+	private final Handler mMainHandler = HandlerCompat.createAsync(Looper.getMainLooper());
 
 	static {
 		Security.addProvider(new LocalCertificateKeyStoreProvider());
@@ -48,6 +57,24 @@ public class StrongSwanApplication extends Application
 		return StrongSwanApplication.mContext;
 	}
 
+	/**
+	 * Returns a thread pool to run tasks in separate threads
+	 * @return thread pool
+	 */
+	public Executor getExecutor()
+	{
+		return mExecutorService;
+	}
+
+	/**
+	 * Returns a handler to execute stuff by the main thread.
+	 * @return handler
+	 */
+	public Handler getHandler()
+	{
+		return mMainHandler;
+	}
+
 	/*
 	 * The libraries are extracted to /data/data/org.strongswan.android/...
 	 * during installation.  On newer releases most are loaded in JNI_OnLoad.
@@ -58,7 +85,7 @@ public class StrongSwanApplication extends Application
 		{
 			System.loadLibrary("strongswan");
 
-			if (RNIpSecVpn.USE_BYOD)
+			if (VpnActivityWrapper.USE_BYOD)
 			{
 				System.loadLibrary("tpmtss");
 				System.loadLibrary("tncif");

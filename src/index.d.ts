@@ -32,15 +32,9 @@ export declare const connect: (
   secret: string,
   disapleOnSleep: boolean
 ) => Promise<void>;
-export declare const saveConfig: (
-  name: string,
-  address: string,
-  username: string,
-  password: string,
-  secret: string,
-  disapleOnSleep: boolean
-) => Promise<void>;
+export declare const saveConfig: (name: string, address: string, username: string, password: string, secret: string) => Promise<void>;
 export declare const getCurrentState: () => Promise<VpnState>;
+export declare const getConnectionTimeSecond: () => Promise<Number>;
 export declare const getCharonErrorState: () => Promise<CharonErrorState>;
 export declare const disconnect: () => Promise<void>;
 declare const _default: any;

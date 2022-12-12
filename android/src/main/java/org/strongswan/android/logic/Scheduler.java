@@ -15,6 +15,7 @@
 
 package org.strongswan.android.logic;
 
+import android.annotation.SuppressLint;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
@@ -76,12 +77,14 @@ public class Scheduler extends BroadcastReceiver
 	 *
 	 * @return pending intent
 	 */
+
+	@RequiresApi(api = Build.VERSION_CODES.S)
 	private PendingIntent createIntent()
 	{
 		/* using component/class doesn't work with dynamic broadcast receivers */
 		Intent intent = new Intent(EXECUTE_JOB);
 		intent.setPackage(mContext.getPackageName());
-		return PendingIntent.getBroadcast(mContext, 0, intent, 0);
+		return PendingIntent.getBroadcast(mContext, 0, intent, PendingIntent.FLAG_MUTABLE);
 	}
 
 	/**
