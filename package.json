@@ -1,7 +1,7 @@
 {
   "name": "react-native-vpn-ipsec",
   "title": "React Native Ip Sec Vpn",
-  "version": "1.0.16",
+  "version": "1.1.0",
   "description": "React Native IPSec VPN Module",
   "homepage": "https://github.com/mstfmedeni/react-native-vpn-ipsec#readme",
   "types": "lib/typescript/index.d.ts",

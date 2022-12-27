@@ -165,7 +165,7 @@ class RNIpSecVpn: RCTEventEmitter {
                     self.vpnManager.saveToPreferences { error in
                         if error != nil {
                             print("VPN Preferences error: 2")
-                            rejecter("VPN_ERR", "VPN Preferences error: 2", self.defaultErr)
+                            rejecter("VPN_ERR", "VPN Preferences error: 2", error)
                         } else {
                             print("VPN Reference Saved")
                             findEventsWithResolver(nil)
@@ -175,7 +175,7 @@ class RNIpSecVpn: RCTEventEmitter {
                     self.vpnManager.saveToPreferences { error in
                         if error != nil {
                             print("VPN Preferences error: 2")
-                            rejecter("VPN_ERR", "VPN Preferences error: 2", self.defaultErr)
+                            rejecter("VPN_ERR", "VPN Preferences error: 2", error)
                         } else {
                             var startError: NSError?
                             
@@ -193,7 +193,7 @@ class RNIpSecVpn: RCTEventEmitter {
                             if startError != nil {
                                 print("VPN Preferences error: 3")
                                 print(startError ?? "Start Error")
-                                //rejecter("VPN_ERR", "VPN Preferences error: 3", startError)
+                                rejecter("VPN_ERR", "VPN Preferences error: 3", startError)
                             } else {
                                 print("VPN started successfully..")
                                 findEventsWithResolver(nil)

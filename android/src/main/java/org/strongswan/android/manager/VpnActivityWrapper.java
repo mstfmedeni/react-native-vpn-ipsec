@@ -31,6 +31,7 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.preference.PreferenceManager;
+import com.facebook.react.bridge.ReactApplicationContext;
 
 import com.sijav.reactnativeipsecvpn.R;
 import org.strongswan.android.data.VpnProfile;
@@ -56,7 +57,8 @@ public class VpnActivityWrapper {
     private boolean mWaitingForResult;
     private VpnStateService mService;
 
-    private AppCompatActivity activity;
+    //private AppCompatActivity activity;
+    private ReactApplicationContext context;
     private StateListener stateListener = null;
 
 
@@ -77,7 +79,6 @@ public class VpnActivityWrapper {
                 return;
             }
 
-            stateListener.stateChanged();
 
             switch (state) {
                 case DISABLED:
@@ -124,36 +125,9 @@ public class VpnActivityWrapper {
         }
     };
 
-    private  ActivityResultLauncher<Intent> mPrepareVpnService;
-    private  ActivityResultLauncher<Intent> mAddToPowerWhitelist;
-
-    public VpnActivityWrapper(AppCompatActivity _activity, StateListener _vpnStateListener) {
-        this.activity = _activity;
+    public VpnActivityWrapper(ReactApplicationContext _context, StateListener _vpnStateListener) {
         this.stateListener = _vpnStateListener;
-
-        mPrepareVpnService = activity.registerForActivityResult(
-                new ActivityResultContracts.StartActivityForResult(),
-                result -> {
-                    mWaitingForResult = false;
-                    if (result.getResultCode() == RESULT_OK && mProfileInfo != null) {
-                        onVpnServicePrepared();
-                    } else {    /* this happens if the always-on VPN feature is activated by a different app or the user declined */
-                        VpnNotSupportedError.showWithMessage(activity, R.string.vpn_not_supported_no_permission);
-                    }
-                }
-        );
-
-
-        mAddToPowerWhitelist = activity.registerForActivityResult(
-                new ActivityResultContracts.StartActivityForResult(),
-                result -> {
-                    mWaitingForResult = false;
-                    if (mProfileInfo != null && mService != null) {
-                        mService.connect(mProfileInfo, true);
-                    }
-
-                }
-        );
+        this.context = _context;
     }
 
 
@@ -191,7 +165,7 @@ public class VpnActivityWrapper {
 
     public void bindService() {
 
-        activity.bindService(new Intent(activity, VpnStateService.class),
+        context.bindService(new Intent(context, VpnStateService.class),
                 mServiceConnection, Service.BIND_AUTO_CREATE);
     }
 
@@ -209,26 +183,9 @@ public class VpnActivityWrapper {
         }
     }
 
-
-    public void onSaveInstanceState(Bundle outState) {
-
-        outState.putBoolean(WAITING_FOR_RESULT, mWaitingForResult);
-    }
-
-
     public void onDestroy() {
         if (mService != null) {
-            activity.unbindService(mServiceConnection);
-        }
-    }
-
-    /**
-     * Due to launchMode=singleTop this is called if the Activity already exists
-     */
-
-    public void onNewIntent(Intent intent) {
-        if (mService != null) {
-            //  handleIntent();
+            context.unbindService(mServiceConnection);
         }
     }
 
@@ -247,33 +204,17 @@ public class VpnActivityWrapper {
         }
 
         try {
-            intent = VpnService.prepare(activity);
+            intent = VpnService.prepare(context);
         } catch (IllegalStateException ex) {
             /* this happens if the always-on VPN feature (Android 4.2+) is activated */
-            VpnNotSupportedError.showWithMessage(activity, R.string.vpn_not_supported_during_lockdown);
             return;
         } catch (NullPointerException ex) {
             /* not sure when this happens exactly, but apparently it does */
-            VpnNotSupportedError.showWithMessage(activity, R.string.vpn_not_supported);
             return;
         }
         /* store profile info until the user grants us permission */
         mProfileInfo = profileInfo;
-        if (intent != null) {
-            try {
-                mWaitingForResult = true;
-                mPrepareVpnService.launch(intent);
-            } catch (ActivityNotFoundException ex) {
-                /* it seems some devices, even though they come with Android 4,
-                 * don't have the VPN components built into the system image.
-                 * com.android.vpndialogs/com.android.vpndialogs.ConfirmDialog
-                 * will not be found then */
-                VpnNotSupportedError.showWithMessage(activity, R.string.vpn_not_supported);
-                mWaitingForResult = false;
-            }
-        } else {    /* user already granted permission to use VpnService */
-            onVpnServicePrepared();
-        }
+        onVpnServicePrepared();
     }
 
     /**
@@ -281,47 +222,13 @@ public class VpnActivityWrapper {
      * by the user.
      */
     public void onVpnServicePrepared() {
-        if (checkPowerWhitelist()) {
-            if (mService != null) {
-                mService.connect(mProfileInfo, true); // connect
-            }
-
+        if (mService != null) {
+            mService.connect(mProfileInfo, true); // connect
+        }else{
+            Log.e("stswan:reportError:", "mService is Empyty Failed to establish VPN:");
         }
     }
 
-    /**
-     * Check if we are on the system's power whitelist, if necessary, or ask the user
-     * to add us.
-     *
-     * @return true if profile can be initiated immediately
-     */
-    private boolean checkPowerWhitelist() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            PowerManager pm = (PowerManager) activity.getSystemService(Context.POWER_SERVICE);
-            SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(activity);
-            if (!pm.isIgnoringBatteryOptimizations(activity.getPackageName()) &&
-                    !pref.getBoolean(Constants.PREF_IGNORE_POWER_WHITELIST, false)) {
-                if (activity.getSupportFragmentManager().isStateSaved()) {    /* we might get called via service connection and manual onActivityResult()
-                 * call when the activity is not active anymore and fragment transactions
-                 * would cause an illegalStateException */
-                    return false;
-                }
-                PowerWhitelistRequired whitelist = new PowerWhitelistRequired(new PowerWhitelistRequired.PowerWhitelistRequiredListener() {
-                    @Override
-                    public void onPositiveClicked() {
-
-                        mWaitingForResult = true;
-                        Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-                                Uri.parse("package:" + activity.getPackageName()));
-                        mAddToPowerWhitelist.launch(intent);
-                    }
-                });
-                whitelist.show(activity.getSupportFragmentManager(), DIALOG_TAG);
-                return false;
-            }
-        }
-        return true;
-    }
 
     /**
      * Check if we are currently connected to a VPN connection
@@ -351,29 +258,8 @@ public class VpnActivityWrapper {
         profileInfo.putBoolean(PROFILE_REQUIRES_PASSWORD, profile.getVpnType().has(VpnType.VpnTypeFeature.USER_PASS));
         profileInfo.putString(PROFILE_NAME, profile.getName());
 
-        removeFragmentByTag(DIALOG_TAG);
-
         if (isConnected()) {
             profileInfo.putBoolean(PROFILE_RECONNECT, mService.getProfile().getUUID().equals(profile.getUUID()));
-
-            ConfirmationDialog dialog = new ConfirmationDialog(new ConfirmationDialog.ConfirmationDialogListener() {
-                @Override
-                public void connectListener(Bundle profileInfo) {
-
-                }
-
-                @Override
-                public void disconnectListener() {
-
-                }
-
-                @Override
-                public void cancelListener() {
-
-                }
-            });
-            dialog.setArguments(profileInfo);
-            dialog.show(activity.getSupportFragmentManager(), DIALOG_TAG);
             return;
         }
         startVpnProfile(profileInfo);
@@ -397,7 +283,7 @@ public class VpnActivityWrapper {
     private void startVpnProfile(Intent intent) {
         VpnProfile profile = null;
 
-        VpnProfileDataSource dataSource = new VpnProfileDataSource(activity);
+        VpnProfileDataSource dataSource = new VpnProfileDataSource(context);
         dataSource.open();
         String profileUUID = intent.getStringExtra(EXTRA_VPN_PROFILE_ID);
         if (profileUUID != null) {
@@ -413,7 +299,7 @@ public class VpnActivityWrapper {
         if (profile != null) {
             startVpnProfile(profile);
         } else {
-            Toast.makeText(activity, R.string.profile_not_found, Toast.LENGTH_LONG).show();
+            Toast.makeText(context, R.string.profile_not_found, Toast.LENGTH_LONG).show();
 
         }
     }
@@ -426,11 +312,9 @@ public class VpnActivityWrapper {
     private void disconnect(Intent intent) {
         VpnProfile profile = null;
 
-        removeFragmentByTag(DIALOG_TAG);
-
         String profileUUID = intent.getStringExtra(EXTRA_VPN_PROFILE_ID);
         if (profileUUID != null) {
-            VpnProfileDataSource dataSource = new VpnProfileDataSource(activity);
+            VpnProfileDataSource dataSource = new VpnProfileDataSource(context);
             dataSource.open();
             profile = dataSource.getVpnProfile(profileUUID);
             dataSource.close();
@@ -447,27 +331,9 @@ public class VpnActivityWrapper {
                 Bundle args = new Bundle();
                 args.putBoolean(PROFILE_DISCONNECT, true);
 
-                ConfirmationDialog dialog = new ConfirmationDialog(new ConfirmationDialog.ConfirmationDialogListener() {
-                    @Override
-                    public void connectListener(Bundle profileInfo) {
-                        startVpnProfile(profileInfo);
-                    }
-
-                    @Override
-                    public void disconnectListener() {
-
-                        if (mService != null) {
-                            mService.disconnect();
-                        }
-                    }
-
-                    @Override
-                    public void cancelListener() {
-
-                    }
-                });
-                dialog.setArguments(args);
-                dialog.show(activity.getSupportFragmentManager(), DIALOG_TAG);
+                if (mService != null) {
+                    mService.disconnect();
+                }
             } else {
 
             }
@@ -486,18 +352,6 @@ public class VpnActivityWrapper {
         }
     }
 
-    /**
-     * Dismiss dialog if shown
-     */
-    public void removeFragmentByTag(String tag) {
-        FragmentManager fm = activity.getSupportFragmentManager();
-        Fragment login = fm.findFragmentByTag(tag);
-        if (login != null) {
-            FragmentTransaction ft = fm.beginTransaction();
-            ft.remove(login);
-            ft.commit();
-        }
-    }
 
     /**
      * Class that displays a confirmation dialog if a VPN profile is already connected

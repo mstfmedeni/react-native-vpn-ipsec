@@ -45,7 +45,7 @@ public class RNIpSecVpn extends ReactContextBaseJavaModule {
         Intent vpnStateServiceIntent = new Intent(context, VpnStateService.class);
         _RNIpSecVpnStateHandler = new RNIpSecVpnStateHandler(this);
         context.bindService(vpnStateServiceIntent, _RNIpSecVpnStateHandler, Service.BIND_AUTO_CREATE);
-
+        loadPrepare();
     }
 
 
@@ -58,31 +58,9 @@ public class RNIpSecVpn extends ReactContextBaseJavaModule {
         return "RNIpSecVpn";
     }
 
-    @ReactMethod
-    public void prepare(final Promise promise) {
-        Activity currentActivity = getCurrentActivity();
-        vpnManager = VpnManagerImplNew.getInstance();
 
-        if (currentActivity == null) {
-            promise.reject("E_ACTIVITY_DOES_NOT_EXIST", "Activity doesn't exist");
-            return;
-        }
-        Intent intent = VpnService.prepare(currentActivity);
-        if (intent != null) {
-            reactContext.addActivityEventListener(new BaseActivityEventListener() {
-                public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent data) {
-                    if(requestCode == 0 && resultCode == RESULT_OK){
-                        promise.resolve(null);
-                    } else {
-                        promise.reject("PrepareError", "Failed to prepare");
-                    }
-                }
-            });
-            currentActivity.startActivityForResult(intent, 0);
-        }
-
-
-        VpnManagerImplNew.setActivityWrapper(new VpnActivityWrapper((AppCompatActivity)currentActivity, new VpnActivityWrapper.StateListener() {
+    void loadPrepare(){
+        VpnManagerImplNew.setActivityWrapper(new VpnActivityWrapper(reactContext, new VpnActivityWrapper.StateListener() {
             @Override
             public void disabled() {
 
@@ -117,40 +95,34 @@ public class RNIpSecVpn extends ReactContextBaseJavaModule {
             }
         }));
 
-    /*    VpnManagerImplNew.setActivityWrapper(new VpnActivityWrapper((AppCompatActivity)currentActivity, new VpnActivityWrapper.StateListener() {
-            @Override
-            public void disabled() {
+        vpnManager.getActivityWrapper().onStart();
+        vpnManager.getActivityWrapper().bindService();
+    }
 
-                Log.e("stswan:reportError:", "DISABLED");
+    @ReactMethod
+    public void prepare(final Promise promise) {
+        Activity currentActivity = getCurrentActivity();
 
-            }
-
-            @Override
-            public void stateChanged() {
-                Log.e("stswan:reportError:", "stateChanged");
-                _RNIpSecVpnStateHandler.stateChanged();
-            }
-
-
-            @Override
-            public void connecting() {
-
-                Log.e("stswan:reportError:", "CONNECTING");
-            }
-
-            @Override
-            public void connected() {
-
-                Log.e("stswan:reportError:", "CONNECTED");
-
-            }
-
-            @Override
-            public void disconnecting() {
-
-                Log.e("stswan:reportError:", "DISCONNECTING");
-            }
-        }));*/
+        if (currentActivity == null) {
+            promise.reject("E_ACTIVITY_DOES_NOT_EXIST", "Activity doesn't exist");
+            return;
+        }
+        Intent intent = VpnService.prepare(currentActivity);
+        if (intent != null) {
+            reactContext.addActivityEventListener(new BaseActivityEventListener() {
+                public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent data) {
+                    if(requestCode == 0 && resultCode == RESULT_OK){
+                        promise.resolve(null);
+                    } else {
+                        promise.reject("PrepareError", "Failed to prepare");
+                    }
+                }
+            });
+            currentActivity.startActivityForResult(intent, 0);
+        }else{
+          //  loadPrepare();
+            promise.resolve(null);
+        }
     }
 
     @ReactMethod
@@ -173,14 +145,7 @@ public class RNIpSecVpn extends ReactContextBaseJavaModule {
             return;
         }
 
-    /*    Bundle profileInfo = new Bundle();
-        profileInfo.putString("Address", address);
-        profileInfo.putString("UserName", username);
-        profileInfo.putString("Password", password);
-        profileInfo.putString("VpnType", VpnType.IKEV2_EAP.getIdentifier());
-        profileInfo.putInt("MTU", mtu);
-        _RNIpSecVpnStateHandler.vpnStateService.connect(profileInfo, true);*/
-        VpnInfoData profile = new VpnInfoData("name", "us2.netkeeply.com", "vpnuser", "A4K3i95PC4AysZDx");
+        VpnInfoData profile = new VpnInfoData("NetKeeply", address, username, password);
         VpnProfile vpnProfile = VpnManagerImplNew.getInstance().createVpnProfile(profile);
 
         vpnManager.getActivityWrapper().connectVpn(vpnProfile);

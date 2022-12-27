@@ -1,13 +1,28 @@
-import { NativeEventEmitter, NativeModules } from 'react-native';
+import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
 export var VpnState;
 (function (VpnState) {
-  VpnState[(VpnState['invalid'] = 0)] = 'invalid';
-  VpnState[(VpnState['disconnected'] = 1)] = 'disconnected';
-  VpnState[(VpnState['connecting'] = 2)] = 'connecting';
-  VpnState[(VpnState['connected'] = 3)] = 'connected';
-  VpnState[(VpnState['reasserting'] = 4)] = 'genericError';
-  VpnState[(VpnState['disconnecting'] = 5)] = 'disconnecting';
+  if (Platform.OS == 'ios') {
+    VpnState[(VpnState['invalid'] = 0)] = 'invalid';
+    VpnState[(VpnState['disconnected'] = 1)] = 'disconnected';
+    VpnState[(VpnState['connecting'] = 2)] = 'connecting';
+    VpnState[(VpnState['connected'] = 3)] = 'connected';
+    VpnState[(VpnState['reasserting'] = 4)] = 'genericError';
+    VpnState[(VpnState['disconnecting'] = 5)] = 'disconnecting';
+  } else {
+    //     disconnected,
+    // connecting,
+    // connected,
+    // disconnecting,
+    // genericError,
+    VpnState[(VpnState['disconnected'] = 0)] = 'disconnected';
+    VpnState[(VpnState['connecting'] = 1)] = 'connecting';
+    VpnState[(VpnState['connected'] = 2)] = 'connected';
+    VpnState[(VpnState['disconnecting'] = 3)] = 'disconnecting';
+    VpnState[(VpnState['genericError'] = 4)] = 'genericError';
+    VpnState[(VpnState['invalid'] = 5)] = 'invalid';
+  }
 })(VpnState || (VpnState = {}));
+
 export var CharonErrorState;
 (function (CharonErrorState) {
   CharonErrorState[(CharonErrorState['NO_ERROR'] = 0)] = 'NO_ERROR';
